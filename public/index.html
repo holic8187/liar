@@ -1,0 +1,84 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹 라이어 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🕵️‍♀️ 라이어 게임 🕵️‍♂️</h1>
+
+        <div id="login-screen">
+            <input type="text" id="nicknameInput" placeholder="닉네임 입력">
+            <!-- === [수정] 입력 필드 안내 변경 === -->
+            <input type="text" id="roomCodeInput" placeholder="방 코드-인원수 (예: ROOM1-5)">
+            <button id="joinBtn">입장 / 방 생성</button>
+            <p class="info-text">최소 3명 이상, 플레이 인원수를 꼭 적어주세요.</p>
+            <!-- ================================ -->
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div class="header-info">
+                <!-- === [수정] 총 인원 표시 추가 === -->
+                방 코드: <span id="currentRoomCode"></span> (<span id="currentPlayers">0</span>/<span id="totalPlayers">0</span>) | 내 닉네임: <span id="myNickname"></span>
+            </div>
+            
+            <div id="system-message-area"></div>
+
+            <!-- 플레이어용 비밀 정보 영역 -->
+            <div id="secret-info-area" class="hidden">
+                <h2>🤫 당신의 역할과 제시어</h2>
+                <div class="secret-card citizen hidden" id="citizen-card">
+                    <p>당신은 <span class="role-citizen">시민</span>입니다.</p>
+                    <p>주제: <span id="topic-citizen" class="highlight"></span></p>
+                    <p class="word-box">제시어: <span id="word-citizen" class="highlight-word"></span></p>
+                </div>
+                <div class="secret-card liar hidden" id="liar-card">
+                    <p>당신은 <span class="role-liar">라이어</span>입니다!</p>
+                    <p>주제: <span id="topic-liar" class="highlight"></span></p>
+                    <p class="word-box liar-word">제시어: ??? (들키지 마세요!)</p>
+                </div>
+            </div>
+
+            <!-- === [추가] 관전자용 정보 영역 === -->
+            <div id="spectator-info-area" class="hidden secret-card spectator">
+                <h2>👀 관전 모드</h2>
+                <p>현재 게임이 진행 중입니다.</p>
+                <p>주제: <span id="topic-spectator" class="highlight"></span></p>
+                <p class="word-box liar-word">제시어: ??? (비공개)</p>
+            </div>
+            <!-- ============================== -->
+
+            <div id="player-area">
+                <h3>플레이어 목록 <span id="phase-status">(대기 중...)</span></h3>
+                <ul id="player-list"></ul>
+                
+                <div class="controls">
+                    <!-- 수동 시작 버튼 제거됨 -->
+                    <button id="votePhaseBtn" class="hidden action-btn playing-only">힌트 종료 & 투표 시작</button>
+                    <button id="voteBtn" class="hidden action-btn voting-only" disabled>선택한 플레이어 투표하기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <div class="result-content">
+                <h2 id="winner-title"></h2>
+                <p id="result-message"></p>
+                <div class="reveal-info">
+                    <p>라이어: <span id="reveal-liar"></span></p>
+                    <p>정답 제시어: <span id="reveal-word" class="highlight-word"></span></p>
+                </div>
+                <button id="restartBtn">대기실로 돌아가기</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
