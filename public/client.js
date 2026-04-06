@@ -173,15 +173,17 @@ function updateUIByPhase(phase) {
     }
 }
 
+// public/client.js
+
+// ... (앞부분 동일)
+
 function updatePlayerListUI(players) {
     playerListEl.innerHTML = '';
     selectedTargetId = null;
-    selectedNickname = null; // 초기화
+    selectedNickname = null;
 
     players.forEach(p => {
-        // === [수정] 자기 자신은 리스트에서 제외 ===
-        if (p.id === myId) return; 
-        // ====================================
+        if (p.id === myId) return; // 자기 자신 제외
 
         const li = document.createElement('li');
         li.textContent = p.nickname;
@@ -194,18 +196,19 @@ function updatePlayerListUI(players) {
             li.appendChild(votedMark);
         }
 
-        if (!isSpectator && currentPhase === 'voting' && !p.voted) {
+        // === [수정] 투표 완료 여부와 상관없이 클릭 이벤트 추가 ===
+        // 기존: if (!isSpectator && currentPhase === 'voting' && !p.voted)
+        if (!isSpectator && currentPhase === 'voting') { 
             li.addEventListener('click', () => {
                 document.querySelectorAll('#player-list li').forEach(el => el.classList.remove('selected'));
                 li.classList.add('selected');
                 selectedTargetId = p.id;
-                // === [추가] 선택된 닉네임 저장 및 버튼 텍스트 업데이트 ===
                 selectedNickname = p.nickname;
                 voteBtn.disabled = false;
                 voteBtn.textContent = `'${selectedNickname}'님에게 투표하기`;
-                // ===================================================
             });
         }
+        // ===================================================
         playerListEl.appendChild(li);
     });
 }
