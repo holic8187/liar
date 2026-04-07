@@ -1,20 +1,5 @@
 /* public/style.css */
-/* 기본 설정 */
-body { font-family: 'Nanum Gothic', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-.container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
-h1 { color: #333; margin-bottom: 25px; }
-h2 { margin-bottom: 15px; color: #555; }
-.hidden { display: none !important; }
-
-/* 입력 및 버튼 */
-input { width: 80%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-button { padding: 12px 24px; border: none; border-radius: 8px; background-color: #4CAF50; color: white; font-size: 18px; cursor: pointer; transition: background-color 0.3s; }
-button:hover { background-color: #45a049; }
-button:disabled { background-color: #ccc; cursor: not-allowed; }
-.action-btn { width: 100%; margin-top: 20px; padding: 15px; font-weight: bold; }
-#votePhaseBtn { background-color: #2196F3; } #votePhaseBtn:hover { background-color: #0b7dda; }
-#voteBtn { background-color: #FF5722; } #voteBtn:hover { background-color: #e64a19; }
-.info-text { color: #888; font-size: 14px; margin-top: 10px; }
+/* ... (기본 설정, 입력 및 버튼 동일) */
 
 /* 게임 화면 요소 */
 .header-info { font-size: 14px; color: #777; margin-bottom: 20px; }
@@ -23,7 +8,8 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
 /* 비밀 정보 카드 */
 .secret-card { background: #f9f9f9; padding: 20px; border-radius: 12px; border: 2px solid #eee; margin-bottom: 20px; }
 .secret-card.citizen { border-color: #4CAF50; background-color: #f1f8e9; }
-.secret-card.liar { border-color: #FF5722; background-color: #fbe9e7; }
+/* .secret-card.liar 제거됨 */
+.secret-card.spectator { border-color: #9E9E9E; background-color: #f5f5f5; color: #666; }
 .role-citizen { color: #4CAF50; font-weight: bold; font-size: 1.2em; }
 .role-liar { color: #FF5722; font-weight: bold; font-size: 1.2em; }
 .highlight { font-weight: bold; color: #333; }
@@ -34,34 +20,16 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
 /* 플레이어 리스트 */
 #player-list { list-style: none; padding: 0; margin-top: 20px; max-height: 300px; overflow-y: auto; }
 #player-list li { padding: 10px 15px; margin: 5px 0; background: #f5f5f5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 2px solid transparent; transition: all 0.2s; }
-/* 투표 모드일 때 선택 가능 표시 */
-.voting-phase #player-list li { cursor: pointer; border-color: #ddd; }
-.voting-phase #player-list li:hover { background-color: #e3f2fd; border-color: #2196F3; }
-/* 선택된 플레이어 */
-.voting-phase #player-list li.selected { background-color: #bbdefb; border-color: #2196F3; font-weight: bold; }
-/* 이미 투표한 플레이어 표시 */
-.voted-mark { color: #4CAF50; font-weight: bold; font-size: 0.9em; }
+/* 투표 관련 스타일 제거됨 (.voting-phase 등) */
 .my-player-li { background-color: #e8eaf6 !important; }
+/* 방장 표시 */
+.host-mark { color: #FF9800; font-weight: bold; font-size: 0.9em; margin-left: 5px; }
 
 /* 결과 화면 오버레이 */
 #result-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 100; }
 .result-content { background: white; padding: 40px; border-radius: 15px; text-align: center; animation: popIn 0.5s ease; }
 @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 #winner-title { font-size: 2em; margin-bottom: 20px; }
-.citizen-win-title { color: #4CAF50; } .liar-win-title { color: #FF5722; }
-.reveal-info { margin: 30px 0; padding: 20px; background: #f0f2f5; border-radius: 10px; }
+.reveal-info { margin: 30px 0; padding: 20px; background: #f0f2f5; border-radius: 10px; text-align: left; }
+.reveal-info p { margin: 10px 0; font-size: 1.1em; }
 #restartBtn { background-color: #607D8B; width: 100%; }
-
-/* public/style.css */
-/* ... (기존 스타일 동일) */
-
-/* 비밀 정보 카드 */
-.secret-card { background: #f9f9f9; padding: 20px; border-radius: 12px; border: 2px solid #eee; margin-bottom: 20px; }
-.secret-card.citizen { border-color: #4CAF50; background-color: #f1f8e9; }
-.secret-card.liar { border-color: #FF5722; background-color: #fbe9e7; }
-/* === [추가] 관전자 카드 스타일 === */
-.secret-card.spectator { border-color: #9E9E9E; background-color: #f5f5f5; color: #666; }
-/* ============================== */
-.role-citizen { color: #4CAF50; font-weight: bold; font-size: 1.2em; }
-.role-liar { color: #FF5722; font-weight: bold; font-size: 1.2em; }
-/* ... (나머지 스타일 동일) */
