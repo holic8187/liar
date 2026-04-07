@@ -1,14 +1,11 @@
 // public/client.js
-const socket = io();
+const socket = io(); // <--- ⭐ 이 줄이 핵심적으로 빠져있었습니다! ⭐
 
 let myId = null;
 let myRoom = null;
 let currentPhase = 'waiting';
-let selectedTargetId = null;
-// === [추가] 선택된 플레이어 닉네임 저장 변수 ===
-let selectedNickname = null;
-// ============================================
 let isSpectator = false;
+let isHost = false; // 방장 여부
 
 const loginScreen = document.getElementById('login-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -18,14 +15,11 @@ const roomCodeInput = document.getElementById('roomCodeInput');
 const systemMessageArea = document.getElementById('system-message-area');
 const playerListEl = document.getElementById('player-list');
 const secretInfoArea = document.getElementById('secret-info-area');
-const citizenCard = document.getElementById('citizen-card');
-const liarCard = document.getElementById('liar-card');
 const spectatorInfoArea = document.getElementById('spectator-info-area');
 const phaseStatus = document.getElementById('phase-status');
 
 const joinBtn = document.getElementById('joinBtn');
-const votePhaseBtn = document.getElementById('votePhaseBtn');
-const voteBtn = document.getElementById('voteBtn');
+const endGameBtn = document.getElementById('endGameBtn');
 const restartBtn = document.getElementById('restartBtn');
 
 // --- 이벤트 리스너 ---
@@ -37,21 +31,11 @@ joinBtn.addEventListener('click', () => {
     socket.emit('joinRoom', { nickname, codeStr });
 });
 
-votePhaseBtn.addEventListener('click', () => {
-    if (confirm('모든 플레이어가 힌트 설명을 마쳤나요? 투표를 시작합니다.')) {
-        socket.emit('startVoting', { roomCode: myRoom });
+// 게임 종료 버튼 (방장 전용)
+endGameBtn.addEventListener('click', () => {
+    if (confirm('게임을 종료하고 정답을 공개하시겠습니까?')) {
+        socket.emit('endGameBtn', { roomCode: myRoom, playerId: myId });
     }
-});
-
-voteBtn.addEventListener('click', () => {
-    if (!selectedTargetId) return;
-    // === [수정] 선택된 닉네임으로 확인 메시지 표시 ===
-    if (confirm(`'${selectedNickname}'님을 라이어로 지목하시겠습니까? (변경 불가)`)) {
-        socket.emit('submitVote', { roomCode: myRoom, playerId: myId, targetId: selectedTargetId });
-        voteBtn.disabled = true;
-        voteBtn.textContent = "투표 완료 (결과 대기 중...)"; // 버튼 텍스트 변경
-    }
-    // ==============================================
 });
 
 restartBtn.addEventListener('click', () => {
@@ -64,6 +48,7 @@ restartBtn.addEventListener('click', () => {
 socket.on('joined', (data) => {
     myId = data.playerId;
     myRoom = data.roomCode;
+    isHost = data.hostId === myId; // 방장 여부 확인
     document.getElementById('currentRoomCode').textContent = myRoom;
     document.getElementById('myNickname').textContent = data.nickname;
     document.getElementById('totalPlayers').textContent = data.totalPlayers;
@@ -73,7 +58,7 @@ socket.on('joined', (data) => {
 });
 
 socket.on('spectatorJoined', (data) => {
-    // ... (관전자 입장 처리 로직 이전과 동일)
+    isHost = data.hostId === myId;
     myRoom = data.roomCode;
     document.getElementById('currentRoomCode').textContent = myRoom;
     document.getElementById('myNickname').textContent = data.nickname + " (관전자)";
@@ -101,48 +86,31 @@ socket.on('errorMsg', (msg) => alert(msg));
 
 socket.on('gameStateUpdate', (data) => {
     currentPhase = data.phase;
+    isHost = data.hostId === myId; // 방장 정보 업데이트
     document.getElementById('currentPlayers').textContent = data.players.length;
     updateUIByPhase(data.phase);
     updatePlayerListUI(data.players);
 });
 
+// 게임 시작 (역할 구분 없이 단어 표시)
 socket.on('gameStarted', (data) => {
     if (isSpectator) return;
 
     secretInfoArea.classList.remove('hidden');
     spectatorInfoArea.classList.add('hidden');
 
-    if (data.isLiar) {
-        citizenCard.classList.add('hidden');
-        liarCard.classList.remove('hidden');
-        document.getElementById('topic-liar').textContent = data.topic;
-    } else {
-        liarCard.classList.add('hidden');
-        citizenCard.classList.remove('hidden');
-        document.getElementById('topic-citizen').textContent = data.topic;
-        document.getElementById('word-citizen').textContent = data.word;
-    }
+    document.getElementById('topic-display').textContent = data.topic;
+    document.getElementById('word-display').textContent = data.word;
 });
 
-socket.on('voteConfirmed', () => {
-    alert('투표가 완료되었습니다. 다른 플레이어들을 기다려주세요.');
-    playerListEl.classList.remove('voting-phase');
-    // 버튼 텍스트는 voteBtn 클릭 이벤트에서 이미 변경됨
-});
-
+// 게임 종료 (결과 공개)
 socket.on('gameOver', (data) => {
     resultScreen.classList.remove('hidden');
-    const titleEl = document.getElementById('winner-title');
-    if (data.winner === 'citizen') {
-        titleEl.textContent = "🎉 시민 승리! 🎉";
-        titleEl.className = 'citizen-win-title';
-    } else {
-        titleEl.textContent = "😈 라이어 승리! 😈";
-        titleEl.className = 'liar-win-title';
-    }
-    document.getElementById('result-message').textContent = data.message;
-    document.getElementById('reveal-liar').textContent = data.liarName;
-    document.getElementById('reveal-word').textContent = data.word;
+    document.getElementById('winner-title').textContent = "결과 공개!";
+    
+    document.getElementById('reveal-citizen-word').textContent = data.citizenWord;
+    document.getElementById('reveal-liar-word').textContent = data.liarWord;
+    document.getElementById('reveal-liar-name').textContent = data.liarName;
     
     secretInfoArea.classList.add('hidden');
     spectatorInfoArea.classList.add('hidden');
@@ -152,7 +120,7 @@ socket.on('gameOver', (data) => {
 // --- UI 헬퍼 함수 ---
 
 function updateUIByPhase(phase) {
-    const phaseTexts = { waiting: '대기 중', playing: '힌트 진행 중', voting: '투표 중', ended: '결과 확인 중' };
+    const phaseTexts = { waiting: '대기 중', playing: '진행 중', ended: '결과 확인 중' };
     phaseStatus.textContent = `(${phaseTexts[phase]})`;
 
     document.querySelectorAll('.action-btn').forEach(btn => btn.classList.add('hidden'));
@@ -162,50 +130,30 @@ function updateUIByPhase(phase) {
     if (phase === 'waiting') {
         secretInfoArea.classList.add('hidden');
     } else if (phase === 'playing') {
-        votePhaseBtn.classList.remove('hidden');
-    } else if (phase === 'voting') {
-        voteBtn.classList.remove('hidden');
-        voteBtn.disabled = true;
-        // === [수정] 투표 버튼 초기 텍스트 설정 ===
-        voteBtn.textContent = "선택한 플레이어에게 투표하기";
-        // ======================================
-        playerListEl.classList.add('voting-phase');
+        // 방장에게만 종료 버튼 표시
+        if (isHost) {
+            endGameBtn.classList.remove('hidden');
+        }
     }
 }
 
 function updatePlayerListUI(players) {
     playerListEl.innerHTML = '';
-    selectedTargetId = null;
-    selectedNickname = null; // 초기화
 
     players.forEach(p => {
-        // === [수정] 자기 자신은 리스트에서 제외 ===
-        if (p.id === myId) return; 
-        // ====================================
-
         const li = document.createElement('li');
         li.textContent = p.nickname;
         li.dataset.id = p.id;
+        if (p.id === myId) li.classList.add('my-player-li');
 
-        if (p.voted) {
-            const votedMark = document.createElement('span');
-            votedMark.className = 'voted-mark';
-            votedMark.textContent = '(투표 완료)';
-            li.appendChild(votedMark);
+        // 방장 표시 (서버에서 받아온 hostId와 비교)
+        if (p.id === isHost) { 
+             const hostMark = document.createElement('span');
+             hostMark.className = 'host-mark';
+             hostMark.textContent = '(방장)';
+             li.appendChild(hostMark);
         }
-
-        if (!isSpectator && currentPhase === 'voting' && !p.voted) {
-            li.addEventListener('click', () => {
-                document.querySelectorAll('#player-list li').forEach(el => el.classList.remove('selected'));
-                li.classList.add('selected');
-                selectedTargetId = p.id;
-                // === [추가] 선택된 닉네임 저장 및 버튼 텍스트 업데이트 ===
-                selectedNickname = p.nickname;
-                voteBtn.disabled = false;
-                voteBtn.textContent = `'${selectedNickname}'님에게 투표하기`;
-                // ===================================================
-            });
-        }
+        
         playerListEl.appendChild(li);
     });
 }
