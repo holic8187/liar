@@ -10,16 +10,25 @@ app.use(express.static('public'));
 
 const rooms = {};
 
-// 게임 데이터 초기화
-function resetGameData(room) {
-    room.liarId = null;
-    room.topic = null;
-    room.citizenWord = null; // 시민용 단어
-    room.liarWord = null;    // 라이어용 단어
-    // 투표 관련 데이터 제거
+// 방 코드 파싱 함수 (이전과 동일)
+function parseRoomCode(codeStr) {
+    const parts = codeStr.split('-');
+    if (parts.length !== 2) return null;
+    const totalPlayers = parseInt(parts[1]);
+    if (isNaN(totalPlayers) || totalPlayers < 2) return null; // 최소 2명
+    return { code: parts[0].toUpperCase(), totalPlayers: totalPlayers };
 }
 
-// 게임 시작 및 역할/단어 분배
+// 게임 데이터 초기화
+function resetGameData(room) {
+    room.topic = null;
+    Object.values(room.players).forEach(p => {
+        p.submittedWord = null; // 내가 입력한 단어
+        p.assignedWord = null;  // 나에게 할당된 단어 (내 이마의 단어)
+    });
+}
+
+// 게임 시작 (단어 입력 단계로 이동)
 function startGame(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
@@ -27,75 +36,73 @@ function startGame(roomCode) {
     // 1. 주제 선정
     const topics = Object.keys(wordData);
     room.topic = topics[Math.floor(Math.random() * topics.length)];
-    const words = wordData[room.topic];
 
-    // 2. 서로 다른 두 단어 선정 (시민용, 라이어용)
-    let citizenWordIndex = Math.floor(Math.random() * words.length);
-    let liarWordIndex = Math.floor(Math.random() * words.length);
-    while (liarWordIndex === citizenWordIndex) { // 같으면 다시 뽑기
-        liarWordIndex = Math.floor(Math.random() * words.length);
-    }
-    room.citizenWord = words[citizenWordIndex];
-    room.liarWord = words[liarWordIndex];
-
-    // 3. 라이어 1명 랜덤 선정
+    // 2. 상태 변경 및 플레이어 순서 결정
+    room.phase = 'wordInput';
     const playerIds = Object.keys(room.players);
-    room.liarId = playerIds[Math.floor(Math.random() * playerIds.length)];
+    // 플레이어 순서를 섞어서 다음 사람 지정 (옵션)
+    // for (let i = playerIds.length - 1; i > 0; i--) {
+    //     const j = Math.floor(Math.random() * (i + 1));
+    //     [playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]];
+    // }
 
-    // 4. 상태 변경 및 정보 전송
-    room.phase = 'playing';
-    
-    playerIds.forEach(pid => {
-        const player = room.players[pid];
-        const isLiar = pid === room.liarId;
-        // 개인별 비밀 정보 전송 (라이어 여부는 안 보냄)
-        io.to(player.socketId).emit('gameStarted', {
+    // 3. 각 플레이어에게 다음 사람 정보 전송
+    playerIds.forEach((pid, index) => {
+        const nextPlayerId = playerIds[(index + 1) % playerIds.length];
+        const nextPlayer = room.players[nextPlayerId];
+        io.to(room.players[pid].socketId).emit('wordInputStart', {
             topic: room.topic,
-            word: isLiar ? room.liarWord : room.citizenWord
+            nextPlayerNickname: nextPlayer.nickname
         });
     });
 
-    io.to(roomCode).emit('systemMessage', '게임이 시작되었습니다! 제시어를 확인하고 외부 채팅방에서 힌트를 진행해주세요.');
+    io.to(roomCode).emit('systemMessage', `주제는 '${room.topic}'입니다. 다음 사람의 단어를 입력해주세요.`);
     updateGameState(roomCode);
 }
 
-// === [추가] 게임 종료 및 결과 공개 함수 ===
-function endGame(roomCode) {
+// 모든 단어 입력 완료 후 게임 화면으로 이동
+function proceedToGame(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    room.phase = 'ended';
-    io.to(roomCode).emit('gameOver', {
-        citizenWord: room.citizenWord,
-        liarWord: room.liarWord,
-        liarName: room.players[room.liarId].nickname
+    room.phase = 'playing';
+    const playerIds = Object.keys(room.players);
+
+    // 단어 순환 할당 (A 입력 -> B 할당, B 입력 -> C 할당, ...)
+    playerIds.forEach((pid, index) => {
+        const nextPlayerId = playerIds[(index + 1) % playerIds.length];
+        room.players[nextPlayerId].assignedWord = room.players[pid].submittedWord;
     });
+
+    // 각 플레이어에게 게임 정보 전송 (내 단어 제외)
+    playerIds.forEach(pid => {
+        const otherPlayersWords = playerIds
+            .filter(id => id !== pid) // 나 자신 제외
+            .map(id => ({ nickname: room.players[id].nickname, word: room.players[id].assignedWord }));
+        
+        io.to(room.players[pid].socketId).emit('gameStarted', {
+            topic: room.topic,
+            othersWords: otherPlayersWords,
+            myWord: room.players[pid].assignedWord // 정답 확인용 (클라이언트에서 숨김 처리)
+        });
+    });
+
+    io.to(roomCode).emit('systemMessage', '모든 단어가 입력되었습니다! 게임을 시작합니다.');
     updateGameState(roomCode);
 }
-// ======================================
 
-// 상태 업데이트 (투표 정보 제거)
+// 상태 업데이트
 function updateGameState(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
-    const playerList = Object.values(room.players).map(p => ({ id: p.id, nickname: p.nickname }));
+    const playerList = Object.values(room.players).map(p => ({
+        id: p.id, nickname: p.nickname, submitted: !!p.submittedWord // 입력 여부 전송
+    }));
     io.to(roomCode).emit('gameStateUpdate', {
         phase: room.phase,
         players: playerList,
-        hostId: room.hostId // 방장 정보 추가 전송
+        totalPlayers: room.totalPlayers
     });
-}
-
-// 방 코드 파싱 함수 (이전과 동일)
-function parseRoomCode(codeStr) {
-    const parts = codeStr.split('-');
-    if (parts.length !== 2) return null;
-    const totalPlayers = parseInt(parts[1]);
-    if (isNaN(totalPlayers) || totalPlayers < 3) return null; 
-    return {
-        code: parts[0].toUpperCase(),
-        totalPlayers: totalPlayers
-    };
 }
 
 io.on('connection', (socket) => {
@@ -103,42 +110,25 @@ io.on('connection', (socket) => {
         const settings = parseRoomCode(codeStr);
         if (!settings) { socket.emit('errorMsg', '잘못된 방 코드 형식입니다.'); return; }
         const roomCode = settings.code;
-        const totalPlayersStr = settings.totalPlayers;
 
         if (!rooms[roomCode]) {
             rooms[roomCode] = {
-                players: {}, phase: 'waiting',
-                liarId: null, topic: null, citizenWord: null, liarWord: null,
-                totalPlayers: totalPlayersStr,
-                hostId: null // 방장 ID 저장
+                players: {}, phase: 'waiting', topic: null,
+                totalPlayers: settings.totalPlayers, hostId: null
             };
             console.log(`Room ${roomCode} created.`);
         }
         const room = rooms[roomCode];
 
-        // 관전자 처리 (투표 정보 제거)
-        if (room.phase !== 'waiting' && room.phase !== 'ended') {
-            socket.emit('spectatorJoined', {
-                roomCode: roomCode, nickname: nickname,
-                topic: room.topic, phase: room.phase,
-                players: Object.values(room.players).map(p => ({ id: p.id, nickname: p.nickname })),
-                hostId: room.hostId
-            });
-            return;
-        }
-
+        if (room.phase !== 'waiting') { socket.emit('errorMsg', '이미 게임이 시작되었습니다.'); return; }
         if (Object.keys(room.players).length >= room.totalPlayers) { socket.emit('errorMsg', '방이 꽉 찼습니다.'); return; }
 
         const playerId = uuidv4();
-        room.players[playerId] = { id: playerId, socketId: socket.id, nickname: nickname };
-        
-        // 첫 번째 플레이어를 방장으로 설정
-        if (!room.hostId) {
-            room.hostId = playerId;
-        }
-
+        room.players[playerId] = { id: playerId, socketId: socket.id, nickname: nickname, submittedWord: null, assignedWord: null };
+        if (!room.hostId) room.hostId = playerId;
         socket.join(roomCode);
-        socket.emit('joined', { playerId, roomCode, nickname, totalPlayers: room.totalPlayers, hostId: room.hostId });
+
+        socket.emit('joined', { playerId, roomCode, nickname, totalPlayers: room.totalPlayers });
         io.to(roomCode).emit('systemMessage', `${nickname}님이 입장하셨습니다.`);
         updateGameState(roomCode);
 
@@ -148,16 +138,34 @@ io.on('connection', (socket) => {
         }
     });
 
-    // === [추가] 게임 종료 요청 (방장만 가능) ===
+    // 단어 제출 처리
+    socket.on('submitWord', ({ roomCode, playerId, word }) => {
+        const room = rooms[roomCode];
+        if (!room || room.phase !== 'wordInput') return;
+        if (!room.players[playerId] || room.players[playerId].submittedWord) return;
+
+        room.players[playerId].submittedWord = word;
+        updateGameState(roomCode); // 입력 상태 업데이트
+
+        // 모든 플레이어가 입력했는지 확인
+        const allSubmitted = Object.values(room.players).every(p => p.submittedWord);
+        if (allSubmitted) {
+            proceedToGame(roomCode);
+        }
+    });
+
+    // 게임 종료 및 정답 공개 (방장 전용)
     socket.on('endGameBtn', ({ roomCode, playerId }) => {
         const room = rooms[roomCode];
         if (!room || room.phase !== 'playing') return;
         if (playerId !== room.hostId) return; // 방장 확인
-        endGame(roomCode);
-    });
-    // ==========================================
 
-    // 투표 관련 이벤트 핸들러 제거됨 (startVoting, submitVote)
+        room.phase = 'ended';
+        // 모든 플레이어의 단어 정보 전송
+        const allWords = Object.values(room.players).map(p => ({ nickname: p.nickname, word: p.assignedWord }));
+        io.to(roomCode).emit('gameOver', { allWords });
+        updateGameState(roomCode);
+    });
 
     // 재시작
     socket.on('restartGame', ({ roomCode }) => {
@@ -170,16 +178,23 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        // ... (기존 접속 종료 처리 로직 - 방장 승계 로직은 복잡해지므로 생략)
+        // ... (기존 방장 승계 로직 포함)
         for (const roomCode in rooms) {
             const room = rooms[roomCode];
             for (const playerId in room.players) {
                 if (room.players[playerId].socketId === socket.id) {
-                    io.to(roomCode).emit('systemMessage', `${room.players[playerId].nickname}님이 퇴장하셨습니다.`);
+                    const leavingPlayerNickname = room.players[playerId].nickname;
+                    const wasHost = room.hostId === playerId;
                     delete room.players[playerId];
                     if (Object.keys(room.players).length === 0) {
-                        delete rooms[roomCode];
+                        delete rooms[roomCode]; console.log(`Room ${roomCode} deleted.`);
                     } else {
+                        if (wasHost) {
+                            room.hostId = Object.keys(room.players)[0];
+                            io.to(roomCode).emit('systemMessage', `${leavingPlayerNickname}님이 퇴장하여 ${room.players[room.hostId].nickname}님이 방장이 되었습니다.`);
+                        } else {
+                            io.to(roomCode).emit('systemMessage', `${leavingPlayerNickname}님이 퇴장하셨습니다.`);
+                        }
                         updateGameState(roomCode);
                     }
                     return;
@@ -190,4 +205,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => { console.log(`Liar Game Server running on port ${PORT}`); });
+http.listen(PORT, () => { console.log(`Yang Se-chan Game Server running on port ${PORT}`); });

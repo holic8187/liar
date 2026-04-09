@@ -15,27 +15,35 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
 #endGameBtn { background-color: #2196F3; } #endGameBtn:hover { background-color: #0b7dda; }
 .info-text { color: #888; font-size: 14px; margin-top: 10px; }
 
+/* public/style.css */
+/* ... (기본 설정, 입력 및 버튼 동일) */
+.info-text { color: #888; font-size: 14px; margin-top: 10px; }
+
+/* 화면별 컨테이너 */
+#login-screen, #waiting-screen, #word-input-screen, #game-screen, #result-screen {
+    width: 100%; /* 컨테이너 너비에 맞춤 */
+}
+
 /* 게임 화면 요소 */
 .header-info { font-size: 14px; color: #777; margin-bottom: 20px; }
-#system-message-area { margin: 15px 0; padding: 10px; background-color: #e8f5e9; color: #2e7d32; border-radius: 8px; font-weight: bold; }
+#system-message-area-waiting, #system-message-area-game { margin: 15px 0; padding: 10px; background-color: #e8f5e9; color: #2e7d32; border-radius: 8px; font-weight: bold; }
 
-/* 비밀 정보 카드 */
-.secret-card { background: #f9f9f9; padding: 20px; border-radius: 12px; border: 2px solid #eee; margin-bottom: 20px; }
-.secret-card.citizen { border-color: #4CAF50; background-color: #f1f8e9; }
-.secret-card.spectator { border-color: #9E9E9E; background-color: #f5f5f5; color: #666; }
-.role-citizen { color: #4CAF50; font-weight: bold; font-size: 1.2em; }
-.role-liar { color: #FF5722; font-weight: bold; font-size: 1.2em; }
 .highlight { font-weight: bold; color: #333; }
-.word-box { font-size: 1.5em; margin-top: 15px; padding: 10px; background: white; border-radius: 8px; border: 2px dashed #ccc; }
-.highlight-word { color: #E91E63; font-weight: bold; }
-.liar-word { color: #999; border-color: #FF5722; }
+.topic-info h2 { color: #333; margin-bottom: 20px; }
 
-/* 플레이어 리스트 */
-#player-list { list-style: none; padding: 0; margin-top: 20px; max-height: 300px; overflow-y: auto; }
-#player-list li { padding: 10px 15px; margin: 5px 0; background: #f5f5f5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 2px solid transparent; transition: all 0.2s; }
-.my-player-li { background-color: #e8eaf6 !important; }
-.host-mark { color: #FF9800; font-weight: bold; font-size: 0.9em; margin-left: 5px; }
+/* === [추가] 단어 목록 스타일 === */
+.word-list { list-style: none; padding: 0; margin-top: 20px; max-height: 300px; overflow-y: auto; }
+.word-list li { padding: 15px; margin: 10px 0; background: #f9f9f9; border-radius: 10px; border: 2px solid #eee; font-size: 1.1em; display: flex; justify-content: space-between; }
+.word-list li .nickname { font-weight: bold; color: #555; }
+.word-list li .word { color: #E91E63; font-weight: bold; }
+/* ============================ */
 
+/* 플레이어 리스트 (대기 화면) */
+#waiting-player-list { list-style: none; padding: 0; margin-top: 20px; }
+#waiting-player-list li { padding: 10px; margin: 5px 0; background: #f5f5f5; border-radius: 8px; }
+.submitted-mark { color: #4CAF50; font-weight: bold; font-size: 0.9em; margin-left: 5px; }
+
+/* ... (결과 화면 오버레이 동일) */
 /* 결과 화면 오버레이 */
 #result-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 100; }
 .result-content { background: white; padding: 40px; border-radius: 15px; text-align: center; animation: popIn 0.5s ease; }

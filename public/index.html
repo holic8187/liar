@@ -4,69 +4,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>바보 라이어 게임</title> <!-- 타이틀 변경 -->
+    <title>양세찬 게임</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>🤪 바보 라이어 게임 🤪</h1> <!-- 제목 변경 -->
+        <h1>🤪 양세찬 게임 🤪</h1>
 
         <div id="login-screen">
             <input type="text" id="nicknameInput" placeholder="닉네임 입력">
             <input type="text" id="roomCodeInput" placeholder="방 코드-인원수 (예: ROOM1-5)">
             <button id="joinBtn">입장 / 방 생성</button>
-            <p class="info-text">최소 3명 이상, 플레이 인원수를 꼭 적어주세요.</p>
+            <p class="info-text">최소 2명 이상, 플레이 인원수를 꼭 적어주세요.</p>
         </div>
+
+        <div id="waiting-screen" class="hidden">
+             <h2>대기 중... (<span id="currentPlayers">0</span>/<span id="totalPlayers">0</span>)</h2>
+             <p>방 코드: <span id="currentRoomCode"></span></p>
+             <ul id="waiting-player-list"></ul>
+             <div id="system-message-area-waiting"></div>
+        </div>
+
+        <!-- === [추가] 단어 입력 화면 === -->
+        <div id="word-input-screen" class="hidden">
+            <h2>단어 입력 단계</h2>
+            <p>주제: <span id="input-topic" class="highlight"></span></p>
+            <p>'<span id="next-player-nickname" class="highlight"></span>'님의 단어를 입력해주세요.</p>
+            <input type="text" id="wordInput" placeholder="단어 입력 (예: 사과)">
+            <button id="submitWordBtn">단어 제출</button>
+        </div>
+        <!-- ============================ -->
 
         <div id="game-screen" class="hidden">
             <div class="header-info">
-                방 코드: <span id="currentRoomCode"></span> (<span id="currentPlayers">0</span>/<span id="totalPlayers">0</span>) | 내 닉네임: <span id="myNickname"></span>
+                방 코드: <span id="gameRoomCode"></span> | 내 닉네임: <span id="myNickname"></span>
             </div>
             
-            <div id="system-message-area"></div>
+            <div id="system-message-area-game"></div>
 
-            <!-- === [수정] 플레이어 정보 영역 (역할 구분 없음) === -->
-            <div id="secret-info-area" class="hidden">
-                <h2>🤫 당신의 제시어</h2>
-                <div class="secret-card citizen"> <!-- 스타일 재사용을 위해 citizen 클래스 유지 -->
-                    <p>주제: <span id="topic-display" class="highlight"></span></p>
-                    <p class="word-box">제시어: <span id="word-display" class="highlight-word"></span></p>
-                </div>
-            </div>
-            <!-- ============================================= -->
-
-            <div id="spectator-info-area" class="hidden secret-card spectator">
-                <h2>👀 관전 모드</h2>
-                <p>현재 게임이 진행 중입니다.</p>
-                <p>주제: <span id="topic-spectator" class="highlight"></span></p>
-                <p class="word-box liar-word">제시어: ??? (비공개)</p>
+            <div class="topic-info">
+                <h2>주제: <span id="game-topic" class="highlight"></span></h2>
             </div>
 
-            <div id="player-area">
-                <h3>플레이어 목록 <span id="phase-status">(대기 중...)</span></h3>
-                <ul id="player-list"></ul>
-                
-                <div class="controls">
-                    <!-- === [추가] 게임 종료 버튼 (방장 전용) === -->
-                    <button id="endGameBtn" class="hidden action-btn playing-only host-only">게임 종료 (정답 공개)</button>
-                    <!-- ====================================== -->
-                </div>
+            <!-- === [수정] 다른 사람 단어 목록 영역 === -->
+            <div id="others-words-area">
+                <h3>다른 플레이어의 단어</h3>
+                <ul id="others-words-list" class="word-list"></ul>
+            </div>
+            <!-- ==================================== -->
+
+            <div class="controls">
+                <!-- === [추가] 정답 확인 버튼 === -->
+                <button id="checkAnswerBtn" class="action-btn">내 단어 정답 확인 (클릭 시 공개)</button>
+                <!-- ============================ -->
+                <button id="endGameBtn" class="hidden action-btn host-only">게임 종료 (전체 정답 공개)</button>
             </div>
         </div>
 
-        <!-- === [수정] 결과 화면 (승패 없음) === -->
         <div id="result-screen" class="hidden">
             <div class="result-content">
-                <h2 id="winner-title">결과 공개!</h2>
-                <div class="reveal-info">
-                    <p>시민 제시어: <span id="reveal-citizen-word" class="highlight-word role-citizen"></span></p>
-                    <p>라이어 제시어: <span id="reveal-liar-word" class="highlight-word role-liar"></span></p>
-                    <p>라이어: <span id="reveal-liar-name"></span></p>
-                </div>
+                <h2 id="winner-title">게임 결과</h2>
+                <ul id="final-words-list" class="word-list"></ul>
                 <button id="restartBtn">대기실로 돌아가기</button>
             </div>
         </div>
-        <!-- ================================== -->
 
     </div>
 
